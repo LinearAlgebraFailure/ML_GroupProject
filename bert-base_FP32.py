@@ -61,7 +61,7 @@ def train_and_evaluate(model, train_loader, val_loader, optimizer, scheduler, de
 
         if val_accuracy > best_accuracy:
             best_accuracy = val_accuracy
-            torch.save(model.state_dict(), 'best_model.pt')
+            torch.save(model.state_dict(), 'bert-base_accuracy(FP32).pt')
             print("Model saved!")
             print("\n")
         else:
@@ -81,20 +81,20 @@ def main():
     model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=4).to(device)
 
     def tokenize_function(examples):
-        return tokenizer(examples['text'], padding='max_length', truncation=True, max_length=128)
+        return tokenizer(examples['text'], padding='max_length', truncation=True, max_length=90)
 
     tokenized_datasets = dataset.map(tokenize_function, batched=True)
     tokenized_datasets = tokenized_datasets.rename_column('label', 'labels')
     tokenized_datasets.set_format('torch', columns=['input_ids', 'attention_mask', 'labels'])
 
-    train_loader = DataLoader(tokenized_datasets['train'], batch_size=16, shuffle=True)
-    val_loader = DataLoader(tokenized_datasets['test'], batch_size=16)
+    train_loader = DataLoader(tokenized_datasets['train'], batch_size=128, shuffle=True, num_workers=8)
+    val_loader = DataLoader(tokenized_datasets['test'], batch_size=128,num_workers=8)
 
     # 定义模型和优化器
 
-    optimizer = AdamW(model.parameters(), lr=1e-5)
+    optimizer = AdamW(model.parameters(), lr=2e-6)
 
-    epochs = 10
+    epochs = 25
     total_steps = len(train_loader) * epochs
     scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=0, num_training_steps=total_steps)
 
@@ -102,13 +102,13 @@ def main():
     accuracy_values = train_and_evaluate(model, train_loader, val_loader, optimizer, scheduler, device, epochs)
 
     # 设置图形的大小和分辨率（DPI）
-    plt.figure(figsize=(10, 5), dpi=300)
+    plt.figure(figsize=(12, 5), dpi=300)
 
     # 绘制准确率曲线
     plt.plot(range(1, epochs + 1), [x.cpu().numpy() for x in accuracy_values], 'b-o')
 
     # 添加标题和坐标轴标签
-    plt.title('Accuracy vs. Epochs')
+    plt.title('bert-base_accuracy(FP32)')
     plt.xlabel('Epochs')
     plt.ylabel('Accuracy')
 
@@ -119,7 +119,8 @@ def main():
     plt.show()
 
     # 保存图形为文件
-    plt.savefig('accuracy_vs_epochs.png', bbox_inches='tight')
+    plt.savefig('bert-base_accuracy(FP32).png', bbox_inches='tight')
+    print(accuracy_values)
 
 
 if __name__ == "__main__":
